@@ -1,5 +1,9 @@
 import userService from '../services/userServices.js';
 import { generateTokens } from '../utils/tokenUtil.js';
+import fs from 'fs';
+import {parse} from 'csv-parse';
+import xlsx from 'xlsx';
+import bcrypt from 'bcrypt';
 
 class UserController {
     async register(req, res) {
@@ -129,6 +133,63 @@ class UserController {
             res.status(500).json({ message: err.message });
         }
     }
+
+    async bulkImport(req, res) {
+        if(!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        const ext = req.file.originalname.split('.').pop().toLowerCase();
+
+        const imported = [];
+        const skipped = [];
+
+        let rows = [];
+
+        if (ext === 'csv'){
+            // Parse CSV file
+            const parser = fs.createReadStream(req.file.path).pipe(parse({ columns: true, trim: true}));
+            for await (const row of parser) {
+                rows.push(row);
+            }
+        }
+        else if (ext === 'xlsx' || ext === 'xls') {
+            // Parse Excel file
+            const workbook = xlsx.readFile(req.file.path);
+            const sheetName = workbook.SheetNames[0];
+            rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        }
+        else {
+            return res.status(400).json({ message: 'Unsupported file format' });
+        }
+
+        for (const row of rows) {
+            const { username, email, password, role, profilePic } = row;
+
+            // Skip if user already exists
+            const exists = await userService.existsByEmailOrUsername(email, username);
+            if (exists) {
+                skipped.push({ username, email });
+                continue;
+            }
+
+            // Hash password if not already hashed (simple check : bcrypt hashes start with $2)
+            let hashedPassword = password;
+            if (!password.startsWith('$2')) {
+                hashedPassword = await bcrypt.hash(password, 10);
+            }
+
+            // Create user (you may want to hash the password here)
+            await userService.register({  username, email, password: hashedPassword, role, profilePic});
+            imported.push({ username, email });
+        }
+        res.json({
+            message: 'Bulk import completed',
+            imported,
+            skipped
+        });
+    }
+
 }
 
 const userController = new UserController();

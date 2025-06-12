@@ -16,7 +16,7 @@ router.get('/users', authenticate, authorizeAdmin, userController.getAllUsers);
 router.get('/users/:id', authenticate, authorizeAdmin, userController.getUserById);
 router.put('/users/:id', authenticate, upload.single('profilePic'), userController.updateUser);
 router.delete('/users/:id', authenticate, authorizeAdmin, userController.deleteUser);
-
+router.post('/users/bulk-import', authenticate, authorizeAdmin, upload.single('file'), userController.bulkImport);
 router.post('/upload-profile-pic', authenticate, upload.single('profilePic'), userController.updateUser);
 
 export default router;

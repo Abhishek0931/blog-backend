@@ -29,6 +29,10 @@ class UserRepository{
     async deleteUser(userId){
         return await User.findByIdAndDelete(userId);
     }
+
+    async existsByEmailorUsername(email, username) {
+        return await User.exists({ $or: [{ email }, { username }] });
+    }
 }
 
 export default new UserRepository();

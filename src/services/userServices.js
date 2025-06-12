@@ -1,5 +1,4 @@
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import userRepo from '../Repository/userRepo.js';
 
 
@@ -39,6 +38,9 @@ class UserService {
         return user;
     }
 
+    async existsByEmailOrUsername(email, username) {
+        return await userRepo.existsByEmailorUsername(email, username);
+    }
 }
 
 export default new UserService();           
